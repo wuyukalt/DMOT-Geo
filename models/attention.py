@@ -114,6 +114,8 @@ class TripletAttention(nn.Module):
 def get_attention(attention='cmib'):
     if attention.lower() == 'cmib':
         return CMIB()
+    elif attention.lower() == 'triplet':
+        return TripletAttention()
     elif attention is None:
         print('There is no attention in the model')
         return nn.Identity()

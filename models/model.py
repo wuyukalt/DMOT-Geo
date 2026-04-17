@@ -1,51 +1,54 @@
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
 from .backbone import get_backbone
 from .attention import get_attention
 from .aggregation import get_aggregation
+from utils.losses import CrossViewOTLoss
 
 
-class OTGeo(nn.Module):
+class DMOTGeo(nn.Module):
     def __init__(self, config):
-        super(OTGeo, self).__init__()
-        self.config = config
+        super().__init__()
+
         self.backbone = get_backbone(backbone=config.backbone)
         self.attention = get_attention(attention=config.attention)
-        self.aggregation = get_aggregation(aggregation=config.aggregation, num_channels=config.num_channels,
-                                           num_clusters=config.num_clusters, cluster_dim=config.cluster_dim)
+        self.aggregation = get_aggregation(aggregation=config.aggregation,
+                                           in_channels=config.num_channels,
+                                           cluster_dim=config.cluster_dim,
+                                           num_clusters=config.num_clusters,
+                                           num_scales=config.num_scales,
+                                           sinkhorn_iters=config.sinkhorn_iters)
 
-        # self.adaptivepool = nn.AdaptiveAvgPool2d(1)
+        self.cv_ot_loss = CrossViewOTLoss(
+            in_channels=config.cluster_dim,
+            hidden_dim=config.num_clusters,
+            sinkhorn_iters=config.sinkhorn_iters,
+            temperature=config.temperature
+        )
 
-    def forward(self, x):
-        # x(32,3,384,384)
-        if self.config.attention.lower() == 'triplet':
-            x = self.backbone(x)  # (32,384,24,24) (32,768,12,12)
-            x = self.attention(x)  # (32,384,24,24)
-            x = self.aggregation(x)  # (32,8192)
+    def extract_featmap(self, x):
+        feat = self.backbone(x)
+        feat = self.attention(feat)
+        return feat
 
-            # x = self.adaptivepool(x)
-            # x = x.view(x.size(0), -1)  # (32,384)
+    def encode_image(self, x):
+        """
+        测试阶段调用这个函数
+        输入单张图，输出全局描述子
+        """
+        feat = self.extract_featmap(x)
+        feat = self.aggregation(feat, return_local=False)
+        return feat
 
-        # return F.normalize(x.sum(dim=-1), p=2, dim=1).flatten(1)
-        return F.normalize(x.flatten(1), p=2, dim=1)
+    def forward_train(self, drone, satellite):
+        """
+        训练阶段调用
+        """
+        feat_d = self.extract_featmap(drone)
+        feat_s = self.extract_featmap(satellite)
 
+        drone_desc, local_d = self.aggregation(feat_d, return_local=True)
+        sat_desc, local_s = self.aggregation(feat_s, return_local=True)
 
-class GeoModel(nn.Module):
-    def __init__(self, config):
-        super(GeoModel, self).__init__()
-        self.model = OTGeo(config=config)
-        if 'infonce' in config.loss.lower():
-            self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+        loss_ot = self.cv_ot_loss(local_d, local_s)
 
-    def forward(self, img1, img2=None):
-
-        if img2 is not None:
-            image_features1 = self.model(img1)
-            image_features2 = self.model(img2)
-            return image_features1, image_features2
-
-        else:
-            image_features = self.model(img1)
-            return image_features
+        return drone_desc, sat_desc, loss_ot

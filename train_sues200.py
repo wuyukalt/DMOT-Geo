@@ -14,7 +14,7 @@ from utils.optim_sche import get_optim, get_sche
 from datasets.university import U1652DatasetEval, U1652DatasetTrain, get_transforms
 from utils.trainer import evaluate, train
 from utils.losses import get_loss_function
-from models.model import GeoModel
+from models.model import DMOTGeo
 import datetime
 from utils.util import copyfiles2checkpoints
 
@@ -22,14 +22,19 @@ from utils.util import copyfiles2checkpoints
 @dataclass
 class Configuration:
     # Model
-    backbone: str = 'ConvNextTiny'
+    backbone: str = 'ConvNextTiny_2'
     attention: str = 'CMIB'
-    aggregation: str = 'OFTA'
+    aggregation: str = 'DMOT'
 
     num_channels: int = 384
     img_size: int = 384
     num_clusters: int = 128
     cluster_dim: int = 64
+
+    # dmot
+    num_scales: int = 3
+    sinkhorn_iters: int = 3
+    temperature: float = 0.1
 
     # Training 
     mixed_precision: bool = True
@@ -56,7 +61,7 @@ class Configuration:
     momentum: float = 0.9
 
     # Loss
-    loss: str = 'SemiTriplet'  # SemiTriplet, Triplet, InfoNCE
+    loss: str = 'InfoNCE'  # InfoNCE
     alpha: int = 10
     label_smoothing: float = 0.1
 

@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 
 import torch
 
-from models.model import GeoModel
+from models.model import DMOTGeo
 from utils.trainer import evaluate
 from datasets.university import U1652DatasetEval, get_transforms
 
@@ -12,9 +12,9 @@ from datasets.university import U1652DatasetEval, get_transforms
 @dataclass
 class Configuration:
     # Model
-    backbone: str = 'ConvNextTiny'
+    backbone: str = 'ConvNextTiny_2'
     attention: str = 'CMIB'
-    aggregation: str = 'OFTA'
+    aggregation: str = 'DMOT'
 
     num_channels: int = 384
     img_size: int = 384
@@ -24,13 +24,18 @@ class Configuration:
     seed = 1
     verbose: bool = True
 
+    # dmot
+    num_scales: int = 3
+    sinkhorn_iters: int = 3
+    temperature: float = 0.1
+
     # Eval
     batch_size_eval: int = 32
     eval_gallery_n: int = -1  # -1 for all or int
     normalize_features: bool = True
 
     # Loss
-    loss: str = 'InfoNCE'  # InfoNCE | SemiTriplet
+    loss: str = 'InfoNCE'  # InfoNCE
 
     dataset: str = 'S200-D2S'  # 'S200-D2S' | 'S200-S2D'
     data_folder: str = "SUES-200-512x512-V2/SUES-200-512x512/Datasets"
@@ -63,7 +68,7 @@ elif config.dataset == 'S200-S2D':
 
 if __name__ == '__main__':
     val_transforms, _, _ = get_transforms((config.img_size, config.img_size))
-    model = GeoModel(config)
+    model = DMOTGeo(config)
     model.load_state_dict(torch.load(config.model_path))
     model = model.to(config.device)
 
