@@ -1,3 +1,10 @@
+
+## DMOT-Geo
+
+Official PyTorch implementation of DMOT-Geo: A dynamic multi-scale optimal transport-based method for robust cross-view geo-localization.
+
+## Dataset
+
 - Download the dataset [University-1652](https://github.com/layumi/University1652-Baseline) and [SUES-200](https://github.com/Reza-Zhu/SUES-200-Benchmark)
 - Organize the data directory as follows:
 ```text
@@ -11,7 +18,8 @@ data/
     ├──query_drone/
     └──query_drone/
 ```
-- Training
+
+## Training
 ```text
 python train_university.py
 ```
@@ -20,7 +28,7 @@ or
 python train_sues200.py
 ```
 
-- Testing
+## Testing
 ```text
 python predict_u1652.py
 ```
